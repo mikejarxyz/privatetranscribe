@@ -30,7 +30,7 @@ export function FeaturesSection() {
       <div className="grid grid-cols-1 sm:grid-cols-2">
         {featureItems.map((item) => (
           <article
-            className="border-b border-zinc-300 px-4 py-8 last:border-b-0 dark:border-zinc-800 sm:px-6 sm:[&:nth-last-child(-n+2)]:border-b-0 sm:[&:nth-child(odd)]:border-r"
+            className="border-b border-zinc-300 px-4 py-8 last:border-b-0 dark:border-zinc-800 sm:px-6 sm:nth-last-[-n+2]:border-b-0 sm:odd:border-r"
             key={item.title}
           >
             <h3 className="font-mono text-sm font-semibold uppercase">
