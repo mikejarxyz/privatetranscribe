@@ -116,13 +116,13 @@ export function TranscriptionTool(props: TranscriptionToolProps) {
               </>
             ) : (
               <span className="font-mono text-sm font-semibold">
-                Drop audio here
+                Drop audio/video here
               </span>
             )}
             <span className="mt-2 max-w-sm text-sm leading-6 text-zinc-600 dark:text-zinc-400">
               {selectedFile
                 ? `${getFileType(selectedFile)} · ${formatBytes(selectedFile.size)}`
-                : 'Or choose a file from your device. Audio stays in this browser.'}
+                : 'Your files stay on your device.'}
             </span>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
               <button
@@ -144,8 +144,8 @@ export function TranscriptionTool(props: TranscriptionToolProps) {
                   : isTranscribing
                     ? 'Transcribing'
                     : selectedFile
-                      ? 'Transcribe audio'
-                      : 'Choose audio file'}
+                      ? 'Transcribe'
+                      : 'Choose file'}
               </button>
             </div>
           </div>

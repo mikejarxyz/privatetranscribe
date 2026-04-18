@@ -3,6 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "license": "AGPL-3.0-only",
+  "homepage": "https://privatetranscribe.app/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikejarxyz/privatetranscribe.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikejarxyz/privatetranscribe/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

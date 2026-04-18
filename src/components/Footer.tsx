@@ -1,4 +1,5 @@
 import { sitemapItems } from '../content/siteContent'
+import GithubIcon from '../assets/github-icon'
 import { LogoMark } from './LogoMark'
 
 export function FooterSections() {
@@ -47,7 +48,18 @@ export function FooterSections() {
           <LogoMark className="block size-4 bg-zinc-500" />
           PrivateTranscribe.app
         </span>
-        <span>AGPL-3.0-only</span>
+        <span className="flex items-center gap-4">
+          <a
+            className="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
+            href="https://github.com/mikejarxyz/privatetranscribe"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <GithubIcon className="size-4" />
+            Source
+          </a>
+          <span>AGPL-3.0-only</span>
+        </span>
       </footer>
     </>
   )
