@@ -10,6 +10,17 @@ html {
   scroll-behavior: smooth;
 }
 
+@keyframes status-pulse {
+  50% {
+    opacity: 0.38;
+    transform: scale(0.86);
+  }
+}
+
+.animate-status-pulse {
+  animation: status-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 body {
   margin: 0;
   min-width: 320px;
