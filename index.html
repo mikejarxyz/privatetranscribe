@@ -10,6 +10,21 @@
     />
     <meta name="application-name" content="PrivateTranscribe.app" />
     <meta name="theme-color" content="#0f172a" />
+    <script>
+      ;(() => {
+        const storedMode = localStorage.getItem('private-transcribe-theme')
+        const prefersDark = window.matchMedia(
+          '(prefers-color-scheme: dark)',
+        ).matches
+        const shouldUseDark =
+          storedMode === 'dark' || (!storedMode && prefersDark)
+
+        document.documentElement.classList.toggle('dark', shouldUseDark)
+        document.documentElement.style.colorScheme = shouldUseDark
+          ? 'dark'
+          : 'light'
+      })()
+    </script>
     <link rel="canonical" href="https://privatetranscribe.app/" />
 
     <meta property="og:site_name" content="PrivateTranscribe.app" />
