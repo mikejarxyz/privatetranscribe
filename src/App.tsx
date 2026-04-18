@@ -15,7 +15,7 @@ function App() {
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col border-x border-zinc-300 bg-stone-50 dark:border-zinc-800 dark:bg-zinc-925">
         <Header onToggleTheme={toggleThemeMode} themeMode={themeMode} />
         <TranscriptionWorkspace controller={transcription} />
-        <HeroSection onDemoTranscript={transcription.handleDemoTranscript} />
+        <HeroSection />
         <MarketingSections />
         <FooterSections />
       </div>

@@ -9,6 +9,7 @@ type TranscriptionToolProps = Pick<
   TranscriptionController,
   | 'cachedModelIds'
   | 'clearSelectedFile'
+  | 'fileError'
   | 'fileInputRef'
   | 'handleDeleteModel'
   | 'handleDownloadModel'
@@ -29,6 +30,7 @@ type TranscriptionToolProps = Pick<
 export function TranscriptionTool(props: TranscriptionToolProps) {
   const {
     clearSelectedFile,
+    fileError,
     fileInputRef,
     handleFiles,
     handleTranscribe,
@@ -148,6 +150,14 @@ export function TranscriptionTool(props: TranscriptionToolProps) {
                       : 'Choose file'}
               </button>
             </div>
+            {fileError ? (
+              <p
+                className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] text-left text-xs leading-5 text-red-700 dark:text-red-300"
+                role="alert"
+              >
+                {fileError}
+              </p>
+            ) : null}
           </div>
 
           <ModelSelector {...props} />

@@ -1,7 +1,3 @@
-export const demoTranscript = `Speaker 1: This is a local transcription demo.
-
-Speaker 2: Audio stays in the browser. The model runs on this device, and the finished transcript can be copied or downloaded as text.`
-
 export const featureItems = [
   {
     title: 'Local first',
@@ -26,6 +22,40 @@ export const resultSteps = [
   'Load local model',
   'Transcribe in browser',
   'Copy or download text',
+] as const
+
+export const privacyPolicyItems = [
+  {
+    title: 'Audio stays local',
+    body: 'Your selected file is decoded and transcribed in your browser. PrivateTranscribe.app does not upload it for transcription.',
+  },
+  {
+    title: 'Models are downloaded',
+    body: 'The first run downloads speech model files. Your browser may keep them so the app starts faster next time.',
+  },
+  {
+    title: 'Transcript control',
+    body: 'Transcript text stays on the page unless you copy or download it. There are no accounts or cloud transcript storage.',
+  },
+  {
+    title: 'Site services',
+    body: 'The site may use hosting, model delivery, ads, or basic measurement. Those services may receive normal browser and network details, but not your file or transcript from the transcription flow.',
+  },
+] as const
+
+export const howItWorksItems = [
+  {
+    title: 'Pick a file',
+    body: 'Choose a supported audio or video file from your device. The app checks the format before transcription starts.',
+  },
+  {
+    title: 'Load a model',
+    body: 'Download the local speech model once. You can switch models or delete the cached model from this browser.',
+  },
+  {
+    title: 'Run locally',
+    body: 'The browser prepares the audio and sends it to a local worker. The transcript is generated on your device.',
+  },
 ] as const
 
 export const faqItems = [

@@ -1,5 +1,11 @@
 import { Minus, Plus } from 'lucide-react'
-import { faqItems, featureItems, resultSteps } from '../content/siteContent'
+import {
+  faqItems,
+  featureItems,
+  howItWorksItems,
+  privacyPolicyItems,
+  resultSteps,
+} from '../content/siteContent'
 import { DiagonalDivider } from './DiagonalDivider'
 
 export function FeaturesSection() {
@@ -48,23 +54,43 @@ export function PrivacyHowItWorksSection() {
     >
       <div className="border-b border-zinc-300 px-4 py-8 dark:border-zinc-800 sm:px-6 lg:border-b-0 lg:border-r">
         <h2 className="font-mono text-sm font-semibold uppercase text-lime-700 dark:text-lime-400">
-          Privacy
+          Privacy policy
         </h2>
         <p className="mt-4 max-w-xl leading-7 text-zinc-700 dark:text-zinc-300">
-          Core transcription runs on your device. The app does not require an
-          account, does not store your audio in the cloud, and does not upload
-          files for the local transcription flow.
+          PrivateTranscribe.app is built around local-first transcription.
         </p>
+        <div className="mt-6 grid gap-5">
+          {privacyPolicyItems.map((item) => (
+            <article key={item.title}>
+              <h3 className="font-mono text-xs font-semibold uppercase text-zinc-950 dark:text-zinc-100">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                {item.body}
+              </p>
+            </article>
+          ))}
+        </div>
       </div>
       <div className="px-4 py-8 sm:px-6" id="how-it-works">
         <h2 className="font-mono text-sm font-semibold uppercase text-lime-700 dark:text-lime-400">
           How it works
         </h2>
         <p className="mt-4 max-w-xl leading-7 text-zinc-700 dark:text-zinc-300">
-          The browser downloads a speech model the first time you use it. After
-          that, supported browsers can reuse cached files for local
-          transcription.
+          The app keeps the workflow simple.
         </p>
+        <div className="mt-6 grid gap-5">
+          {howItWorksItems.map((item) => (
+            <article key={item.title}>
+              <h3 className="font-mono text-xs font-semibold uppercase text-zinc-950 dark:text-zinc-100">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                {item.body}
+              </p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   )

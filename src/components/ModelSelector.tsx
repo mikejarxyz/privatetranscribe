@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, Download, Info, Trash2 } from 'lucide-react'
 import { transcriptionModels } from '../transcription/models'
 import type { TranscriptionController } from '../hooks/useTranscriptionController'
+import { TooltipButton } from './TooltipButton'
 
 type ModelSelectorProps = Pick<
   TranscriptionController,
@@ -34,8 +35,6 @@ export function ModelSelector({
   selectedModelId,
 }: ModelSelectorProps) {
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
-  const [isModelInfoOpen, setIsModelInfoOpen] = useState(false)
-  const [isStatusInfoOpen, setIsStatusInfoOpen] = useState(false)
   const modelStatusLabel = isModelDownloading
     ? 'Model downloading'
     : isTranscribing && isSelectedModelCached
@@ -47,7 +46,6 @@ export function ModelSelector({
   function handleChange(modelId: string) {
     handleModelChange(modelId)
     setIsModelMenuOpen(false)
-    setIsModelInfoOpen(false)
   }
 
   return (
@@ -57,73 +55,40 @@ export function ModelSelector({
           <span className="font-mono text-xs uppercase text-zinc-500 dark:text-zinc-500">
             Local model
           </span>
-          <div className="relative">
-            <button
-              aria-expanded={isModelInfoOpen}
-              aria-label="Model download information"
-              className="grid h-5 w-5 cursor-pointer place-items-center rounded-full text-zinc-500 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-lime-500 dark:hover:text-zinc-100"
-              onBlur={(event) => {
-                if (
-                  !event.currentTarget.parentElement?.contains(
-                    event.relatedTarget,
-                  )
-                ) {
-                  setIsModelInfoOpen(false)
-                }
-              }}
-              onClick={() => setIsModelInfoOpen((isOpen) => !isOpen)}
-              onMouseEnter={() => setIsModelInfoOpen(true)}
-              onMouseLeave={() => setIsModelInfoOpen(false)}
-              type="button"
-            >
-              <Info aria-hidden="true" className="h-3.5 w-3.5" />
-            </button>
-            {isModelInfoOpen ? (
-              <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-64 border border-zinc-400 bg-white p-3 text-xs leading-5 text-zinc-700 shadow-[4px_4px_0_0_rgba(63,63,70,0.18)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:shadow-[4px_4px_0_0_rgba(0,0,0,0.35)]">
-                First use downloads the selected model. Changing models
-                replaces the local model cache. Your audio is not uploaded.
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="relative">
-          <button
-            aria-label={modelStatusLabel}
-            className="grid size-5 cursor-pointer place-items-center rounded-full focus:outline-none focus:ring-2 focus:ring-lime-500/35"
-            onBlur={(event) => {
-              if (
-                !event.currentTarget.parentElement?.contains(
-                  event.relatedTarget,
-                )
-              ) {
-                setIsStatusInfoOpen(false)
-              }
-            }}
-            onClick={() => setIsStatusInfoOpen((isOpen) => !isOpen)}
-            onMouseEnter={() => setIsStatusInfoOpen(true)}
-            onMouseLeave={() => setIsStatusInfoOpen(false)}
-            type="button"
+          <TooltipButton
+            ariaLabel="Model download information"
+            buttonClassName="grid h-5 w-5 cursor-pointer place-items-center rounded-full text-zinc-500 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-lime-500 dark:hover:text-zinc-100"
+            tooltip={
+              <>
+                First use downloads the selected model. Changing models replaces
+                the local model cache. Your audio is not uploaded.
+              </>
+            }
+            tooltipClassName="absolute left-[-4.75rem] top-[calc(100%+6px)] z-30 w-[calc(100vw-2rem)] max-w-64 border border-zinc-400 bg-white p-3 text-xs leading-5 text-zinc-700 shadow-[4px_4px_0_0_rgba(63,63,70,0.18)] sm:left-0 sm:w-64 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:shadow-[4px_4px_0_0_rgba(0,0,0,0.35)]"
           >
-            <span
-              aria-hidden="true"
-              className={[
-                'size-2 rounded-full border',
-                isModelDownloading
-                  ? 'animate-status-pulse border-yellow-700 bg-yellow-400 shadow-[0_0_10px_2px_rgba(250,204,21,0.45)] dark:border-yellow-400'
-                  : isTranscribing && isSelectedModelCached
-                    ? 'animate-status-pulse border-lime-700 bg-lime-500 shadow-[0_0_10px_2px_rgba(132,204,22,0.5)] dark:border-lime-400'
-                    : isSelectedModelCached
-                      ? 'border-lime-700 bg-lime-500 shadow-[0_0_10px_2px_rgba(132,204,22,0.45)] dark:border-lime-400'
-                      : 'border-yellow-700 bg-yellow-400 shadow-[0_0_10px_2px_rgba(250,204,21,0.38)] dark:border-yellow-400',
-              ].join(' ')}
-            />
-          </button>
-          {isStatusInfoOpen ? (
-            <div className="absolute right-0 top-[calc(100%+6px)] z-30 whitespace-nowrap border border-zinc-400 bg-white px-3 py-2 text-xs leading-5 text-zinc-700 shadow-[4px_4px_0_0_rgba(63,63,70,0.18)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:shadow-[4px_4px_0_0_rgba(0,0,0,0.35)]">
-              {modelStatusLabel}
-            </div>
-          ) : null}
+            <Info aria-hidden="true" className="h-3.5 w-3.5" />
+          </TooltipButton>
         </div>
+        <TooltipButton
+          ariaLabel={modelStatusLabel}
+          buttonClassName="grid size-5 cursor-pointer place-items-center rounded-full focus:outline-none focus:ring-2 focus:ring-lime-500/35"
+          tooltip={modelStatusLabel}
+          tooltipClassName="absolute right-0 top-[calc(100%+6px)] z-30 whitespace-nowrap border border-zinc-400 bg-white px-3 py-2 text-xs leading-5 text-zinc-700 shadow-[4px_4px_0_0_rgba(63,63,70,0.18)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:shadow-[4px_4px_0_0_rgba(0,0,0,0.35)]"
+        >
+          <span
+            aria-hidden="true"
+            className={[
+              'size-2 rounded-full border',
+              isModelDownloading
+                ? 'animate-status-pulse border-yellow-700 bg-yellow-400 shadow-[0_0_10px_2px_rgba(250,204,21,0.45)] dark:border-yellow-400'
+                : isTranscribing && isSelectedModelCached
+                  ? 'animate-status-pulse border-lime-700 bg-lime-500 shadow-[0_0_10px_2px_rgba(132,204,22,0.5)] dark:border-lime-400'
+                  : isSelectedModelCached
+                    ? 'border-lime-700 bg-lime-500 shadow-[0_0_10px_2px_rgba(132,204,22,0.45)] dark:border-lime-400'
+                    : 'border-yellow-700 bg-yellow-400 shadow-[0_0_10px_2px_rgba(250,204,21,0.38)] dark:border-yellow-400',
+            ].join(' ')}
+          />
+        </TooltipButton>
         {isModelDownloading ? (
           <span
             aria-hidden="true"
@@ -239,7 +204,11 @@ export function ModelSelector({
               type="button"
             >
               {isSelectedModelCached ? (
-                <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                <Trash2
+                  aria-hidden="true"
+                  className="size-4"
+                  strokeWidth={1.75}
+                />
               ) : (
                 <Download
                   aria-hidden="true"

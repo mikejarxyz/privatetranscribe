@@ -33,9 +33,7 @@ const acceptedAudioMimeTypes = [
 ]
 
 export const acceptedAudioInput = [
-  'audio/*',
-  'video/mp4',
-  'video/webm',
+  ...acceptedAudioMimeTypes,
   ...acceptedAudioExtensions,
 ].join(',')
 
@@ -52,4 +50,16 @@ export function isAcceptedAudioFile(file: File) {
 
 export function getAcceptedAudioLabel() {
   return 'WAV, MP3, M4A, AAC, OGG, OPUS, FLAC, WebM, MP4, or AIFF'
+}
+
+export function getAudioFileFormatLabel(file: File) {
+  const extensionIndex = file.name.lastIndexOf('.')
+
+  if (extensionIndex >= 0 && extensionIndex < file.name.length - 1) {
+    return file.name.slice(extensionIndex + 1).toUpperCase()
+  }
+
+  const mimeSubtype = file.type.split('/')[1]?.replace(/^x-/, '')
+
+  return mimeSubtype ? mimeSubtype.toUpperCase() : 'This file type'
 }

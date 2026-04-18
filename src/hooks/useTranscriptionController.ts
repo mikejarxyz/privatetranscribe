@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { demoTranscript } from '../content/siteContent'
 import {
   getAcceptedAudioLabel,
+  getAudioFileFormatLabel,
   isAcceptedAudioFile,
 } from '../transcription/audio'
 import { createTranscriptionWorker } from '../transcription/client'
@@ -47,6 +47,7 @@ export function useTranscriptionController() {
   const workerRef = useRef<Worker | null>(null)
   const copiedTimeoutRef = useRef<number | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [fileError, setFileError] = useState('')
   const [transcript, setTranscript] = useState('')
   const [hasCopiedTranscript, setHasCopiedTranscript] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState<TranscriptionModelId>(
@@ -170,12 +171,19 @@ export function useTranscriptionController() {
     if (!isAcceptedAudioFile(file)) {
       setSelectedFile(null)
       setTranscript('')
+      setFileError(`${getAudioFileFormatLabel(file)} is not supported yet.`)
       setStatus(`Unsupported file type. Use ${getAcceptedAudioLabel()}.`)
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+
       return
     }
 
     setSelectedFile(file)
     setTranscript('')
+    setFileError('')
     setStatus(
       isSelectedModelReady
         ? 'Audio loaded. Ready to transcribe locally.'
@@ -186,6 +194,7 @@ export function useTranscriptionController() {
   function clearSelectedFile() {
     setSelectedFile(null)
     setTranscript('')
+    setFileError('')
 
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -256,6 +265,7 @@ export function useTranscriptionController() {
 
     try {
       setTranscript('')
+      setFileError('')
       setIsTranscribing(true)
       setStatus('Preparing audio locally.')
 
@@ -271,6 +281,7 @@ export function useTranscriptionController() {
       workerRef.current?.postMessage(request, [audio.buffer])
     } catch (error) {
       setIsTranscribing(false)
+      setFileError('This browser could not read that file.')
       setStatus(
         error instanceof Error
           ? error.message
@@ -312,23 +323,13 @@ export function useTranscriptionController() {
     URL.revokeObjectURL(url)
   }
 
-  function handleDemoTranscript() {
-    setTranscript(demoTranscript)
-    setSelectedFile(null)
-    setStatus('Demo transcript loaded.')
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
   return {
     cachedModelIds,
     clearSelectedFile,
     fileInputRef,
+    fileError,
     handleCopyTranscript,
     handleDeleteModel,
-    handleDemoTranscript,
     handleDownloadModel,
     handleDownloadTranscript,
     handleFiles,
