@@ -22,13 +22,13 @@ export function Header({ themeMode, onToggleTheme }: HeaderProps) {
       </a>
       <nav className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
         <a
-          className="cursor-pointer hover:text-zinc-950 dark:hover:text-zinc-100"
+          className="hidden cursor-pointer hover:text-zinc-950 dark:hover:text-zinc-100 sm:inline"
           href="#features"
         >
           Features
         </a>
         <a
-          className="cursor-pointer hover:text-zinc-950 dark:hover:text-zinc-100"
+          className="hidden cursor-pointer hover:text-zinc-950 dark:hover:text-zinc-100 sm:inline"
           href="#how-it-works"
         >
           How it works
