@@ -36,7 +36,7 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
   const modelStatusLabel = isModelDownloading
-    ? 'Model downloading'
+    ? 'Loading model'
     : isTranscribing && isSelectedModelCached
       ? 'Transcribing...'
       : isSelectedModelCached
