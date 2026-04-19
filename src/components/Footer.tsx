@@ -38,7 +38,7 @@ export function FooterSections() {
             Privacy
           </h2>
           <p className="mt-4 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-            No upload for core transcription. AGPL-3.0-only.
+            No upload for core transcription.<br />AGPL-3.0-only.
           </p>
         </div>
       </footer>
@@ -48,7 +48,22 @@ export function FooterSections() {
           <LogoMark className="block size-4 bg-zinc-500" />
           PrivateTranscribe.app
         </span>
-        <span className="flex items-center gap-4">
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <a
+            className="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
+            href="https://getClear.digital/"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <img
+              alt=""
+              className="size-5"
+              height="16"
+              src="/Monogram-Green.svg"
+              width="16"
+            />
+            by getClear Digital
+          </a>
           <a
             className="inline-flex items-center gap-1.5 text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100"
             href="https://github.com/mikejarxyz/privatetranscribe"
