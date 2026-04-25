@@ -18,8 +18,8 @@ export function TranscriptPanel({
   transcript,
 }: TranscriptPanelProps) {
   return (
-    <div className="flex min-h-0 flex-col px-4 py-8 sm:px-6 lg:py-16">
-      <section className="flex min-h-0 flex-1 flex-col border border-zinc-300 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex min-h-0 flex-col px-4 py-8 sm:px-6 lg:relative lg:py-16">
+      <section className="flex min-h-0 flex-1 flex-col border border-zinc-300 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:absolute lg:inset-x-6 lg:inset-y-16">
         <div className="flex items-center justify-between gap-3 border-b border-zinc-300 px-4 py-3 dark:border-zinc-800">
           <h2 className="font-mono text-sm font-semibold uppercase">
             Transcript
