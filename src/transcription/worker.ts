@@ -1,5 +1,6 @@
 import {
   pipeline,
+  WhisperTextStreamer,
   type AutomaticSpeechRecognitionPipeline,
   type AutomaticSpeechRecognitionOutput,
   type ProgressInfo,
@@ -15,7 +16,13 @@ let transcriber: AutomaticSpeechRecognitionPipeline | null = null
 let loadingModelId: TranscriptionModelId | null = null
 let loadingModelPromise: Promise<AutomaticSpeechRecognitionPipeline> | null = null
 
+type WhisperStreamerTokenizer = ConstructorParameters<typeof WhisperTextStreamer>[0]
+
 const DOWNLOAD_PROGRESS_CEILING = 92
+const TRANSCRIPTION_PROGRESS_CEILING = 95
+const TRANSCRIPTION_SAMPLE_RATE = 16_000
+const TRANSCRIPTION_CHUNK_LENGTH_SECONDS = 30
+const TRANSCRIPTION_STRIDE_LENGTH_SECONDS = 5
 const TRANSFORMERS_CACHE_NAME = 'transformers-cache'
 
 function postMessageToClient(message: TranscriptionWorkerResponse) {
@@ -173,6 +180,59 @@ function createModelProgressReporter(
   }
 }
 
+function getTranscriptionChunkCount(audioLength: number) {
+  const chunkLength = TRANSCRIPTION_CHUNK_LENGTH_SECONDS * TRANSCRIPTION_SAMPLE_RATE
+  const strideLength = TRANSCRIPTION_STRIDE_LENGTH_SECONDS * TRANSCRIPTION_SAMPLE_RATE
+  const jumpLength = chunkLength - 2 * strideLength
+
+  if (audioLength <= chunkLength) {
+    return 1
+  }
+
+  return 1 + Math.ceil((audioLength - chunkLength) / jumpLength)
+}
+
+function createTranscriptionStreamer(
+  id: string,
+  audioLength: number,
+  loadedTranscriber: AutomaticSpeechRecognitionPipeline,
+) {
+  const totalChunks = getTranscriptionChunkCount(audioLength)
+  let completedChunks = 0
+  let lastProgress = 0
+
+  function postProgress(progress: number) {
+    const nextProgress = Math.max(
+      lastProgress,
+      Math.min(TRANSCRIPTION_PROGRESS_CEILING, Math.round(progress)),
+    )
+
+    if (nextProgress === lastProgress) {
+      return
+    }
+
+    lastProgress = nextProgress
+    postMessageToClient({
+      id,
+      type: 'transcription-progress',
+      progress: nextProgress,
+    })
+  }
+
+  return new WhisperTextStreamer(
+    loadedTranscriber.tokenizer as WhisperStreamerTokenizer,
+    {
+      callback_function: () => {},
+      on_finalize: () => {
+        completedChunks += 1
+        postProgress(
+          (completedChunks / totalChunks) * TRANSCRIPTION_PROGRESS_CEILING,
+        )
+      },
+    },
+  )
+}
+
 async function loadModel(id: string, modelId: TranscriptionModelId) {
   if (transcriber && activeModelId === modelId) {
     postMessageToClient({ id, type: 'model-ready', modelId })
@@ -273,10 +333,20 @@ async function handleRequest(message: TranscriptionWorkerRequest) {
         id: message.id,
         type: 'transcription-started',
       })
+      postMessageToClient({
+        id: message.id,
+        type: 'transcription-progress',
+        progress: 1,
+      })
 
       const result = await loadedTranscriber(message.audio, {
-        chunk_length_s: 30,
-        stride_length_s: 5,
+        chunk_length_s: TRANSCRIPTION_CHUNK_LENGTH_SECONDS,
+        stride_length_s: TRANSCRIPTION_STRIDE_LENGTH_SECONDS,
+        streamer: createTranscriptionStreamer(
+          message.id,
+          message.audio.length,
+          loadedTranscriber,
+        ),
       })
 
       postMessageToClient({

@@ -17,6 +17,7 @@ type ModelSelectorProps = Pick<
   | 'modelDownloadProgress'
   | 'selectedModel'
   | 'selectedModelId'
+  | 'transcriptionProgress'
 >
 
 const modelOptions = transcriptionModels
@@ -33,8 +34,13 @@ export function ModelSelector({
   modelDownloadProgress,
   selectedModel,
   selectedModelId,
+  transcriptionProgress,
 }: ModelSelectorProps) {
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false)
+  const activeProgress = isModelDownloading
+    ? modelDownloadProgress
+    : transcriptionProgress
+  const isProgressVisible = isModelDownloading || isTranscribing
   const modelStatusLabel = isModelDownloading
     ? 'Loading model'
     : isTranscribing && isSelectedModelCached
@@ -89,11 +95,14 @@ export function ModelSelector({
             ].join(' ')}
           />
         </TooltipButton>
-        {isModelDownloading ? (
+        {isProgressVisible ? (
           <span
             aria-hidden="true"
-            className="absolute bottom-[-1px] left-0 h-0.5 bg-lime-500 transition-[width]"
-            style={{ width: `${modelDownloadProgress}%` }}
+            className={[
+              'absolute -bottom-px left-0 h-0.5 transition-[width]',
+              isModelDownloading ? 'bg-yellow-400' : 'bg-lime-500',
+            ].join(' ')}
+            style={{ width: `${activeProgress}%` }}
           />
         ) : null}
       </div>

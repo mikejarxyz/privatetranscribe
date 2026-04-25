@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import JSZip from 'jszip'
 import {
   getAcceptedAudioLabel,
   getAudioFileFormatLabel,
@@ -7,13 +8,20 @@ import {
 import { createTranscriptionWorker } from '../transcription/client'
 import { decodeAudioFile } from '../transcription/decodeAudio'
 import {
-  transcriptionModels,
-  type TranscriptionModelId,
-} from '../transcription/models'
+  createUniqueTranscriptFileNames,
+  createTranscriptionJob,
+  getTranscriptFileName,
+  MAX_BATCH_FILES,
+  type TranscriptionJob,
+} from '../transcription/jobs'
 import type {
   TranscriptionWorkerRequest,
   TranscriptionWorkerResponse,
 } from '../transcription/messages'
+import {
+  transcriptionModels,
+  type TranscriptionModelId,
+} from '../transcription/models'
 
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -46,9 +54,13 @@ export function useTranscriptionController() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const workerRef = useRef<Worker | null>(null)
   const copiedTimeoutRef = useRef<number | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const requestToJobRef = useRef(new Map<string, string>())
+  const jobsRef = useRef<TranscriptionJob[]>([])
+  const isBatchRunningRef = useRef(false)
+  const selectedModelIdRef = useRef<TranscriptionModelId>(getInitialModelId())
+  const [jobs, setJobs] = useState<TranscriptionJob[]>([])
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [fileError, setFileError] = useState('')
-  const [transcript, setTranscript] = useState('')
   const [hasCopiedTranscript, setHasCopiedTranscript] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState<TranscriptionModelId>(
     getInitialModelId,
@@ -60,9 +72,14 @@ export function useTranscriptionController() {
   const [modelStatus, setModelStatus] = useState<ModelStatus>('idle')
   const [isModelDownloading, setIsModelDownloading] = useState(false)
   const [modelDownloadProgress, setModelDownloadProgress] = useState(0)
-  const [, setStatus] = useState('Waiting for an audio file.')
+  const [, setStatus] = useState('Waiting for audio files.')
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [transcriptionProgress, setTranscriptionProgress] = useState(0)
 
+  const selectedJob =
+    jobs.find((candidateJob) => candidateJob.id === selectedJobId) ?? null
+  const transcript = selectedJob?.transcript ?? ''
+  const completedJobs = jobs.filter((job) => job.status === 'complete')
   const hasTranscript = transcript.trim().length > 0
   const selectedModel =
     modelOptions.find((model) => model.id === selectedModelId) ?? modelOptions[0]
@@ -71,6 +88,74 @@ export function useTranscriptionController() {
   const isSelectedModelCached =
     isSelectedModelReady || cachedModelIds.includes(selectedModelId)
   const isModelWorking = isModelDownloading || isTranscribing
+
+  useEffect(() => {
+    jobsRef.current = jobs
+    isBatchRunningRef.current = isTranscribing
+    selectedModelIdRef.current = selectedModelId
+  }, [jobs, isTranscribing, selectedModelId])
+
+  const transcribeNextQueuedJob = useCallback(async () => {
+    if (!isBatchRunningRef.current) {
+      return
+    }
+
+    const nextJob = jobsRef.current.find((job) => job.status === 'queued')
+    if (!nextJob) {
+      isBatchRunningRef.current = false
+      setIsTranscribing(false)
+      setTranscriptionProgress(0)
+      setStatus('Batch transcription complete.')
+      return
+    }
+
+    try {
+      setJobs((currentJobs) =>
+        currentJobs.map((job) =>
+          job.id === nextJob.id
+            ? { ...job, status: 'preparing', transcript: '', error: null }
+            : job,
+        ),
+      )
+      setSelectedJobId(nextJob.id)
+      setTranscriptionProgress(0)
+      setStatus(`Preparing ${nextJob.file.name}.`)
+
+      const audio = await decodeAudioFile(nextJob.file)
+      const requestId = createRequestId()
+      const request: TranscriptionWorkerRequest = {
+        id: requestId,
+        type: 'transcribe',
+        modelId: selectedModelIdRef.current,
+        audio,
+      }
+
+      requestToJobRef.current.set(requestId, nextJob.id)
+      setJobs((currentJobs) =>
+        currentJobs.map((job) =>
+          job.id === nextJob.id ? { ...job, status: 'transcribing' } : job,
+        ),
+      )
+      workerRef.current?.postMessage(request, [audio.buffer])
+    } catch (error) {
+      setJobs((currentJobs) =>
+        currentJobs.map((job) =>
+          job.id === nextJob.id
+            ? {
+                ...job,
+                status: 'error',
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : 'Unable to prepare audio for transcription.',
+              }
+            : job,
+        ),
+      )
+      setTranscriptionProgress(0)
+      void transcribeNextQueuedJob()
+    }
+  }, [])
 
   useEffect(() => {
     const worker = createTranscriptionWorker()
@@ -133,20 +218,60 @@ export function useTranscriptionController() {
             setStatus('Local model removed from this browser.')
             return
           case 'transcription-started':
-            setIsTranscribing(true)
+            setTranscriptionProgress(1)
             setStatus('Transcribing locally.')
             return
-          case 'transcription-complete':
-            setIsTranscribing(false)
-            setTranscript(message.text)
-            setStatus('Transcript complete.')
+          case 'transcription-progress':
+            setTranscriptionProgress((currentProgress) =>
+              Math.max(currentProgress, message.progress),
+            )
             return
-          case 'worker-error':
+          case 'transcription-complete': {
+            const jobId = requestToJobRef.current.get(message.id)
+            if (!jobId) {
+              return
+            }
+            requestToJobRef.current.delete(message.id)
+            setTranscriptionProgress(100)
+            setJobs((currentJobs) =>
+              currentJobs.map((job) =>
+                job.id === jobId
+                  ? {
+                      ...job,
+                      status: 'complete',
+                      transcript: message.text,
+                      error: null,
+                    }
+                  : job,
+              ),
+            )
+            setSelectedJobId((currentSelectedJobId) => currentSelectedJobId ?? jobId)
+            void transcribeNextQueuedJob()
+            return
+          }
+          case 'worker-error': {
             setModelStatus('error')
             setIsModelDownloading(false)
-            setIsTranscribing(false)
+            setTranscriptionProgress(0)
+            const jobId = requestToJobRef.current.get(message.id)
+            if (jobId) {
+              requestToJobRef.current.delete(message.id)
+              setJobs((currentJobs) =>
+                currentJobs.map((job) =>
+                  job.id === jobId
+                    ? {
+                        ...job,
+                        status: 'error',
+                        error: message.message,
+                      }
+                    : job,
+                ),
+              )
+            }
             setStatus(message.message)
+            void transcribeNextQueuedJob()
             return
+          }
         }
       },
     )
@@ -159,51 +284,86 @@ export function useTranscriptionController() {
       worker.terminate()
       workerRef.current = null
     }
-  }, [])
+  }, [transcribeNextQueuedJob])
 
   function handleFiles(files: FileList | null) {
-    const file = files?.[0]
-
-    if (!file) {
+    if (!files || files.length === 0) {
       return
     }
 
-    if (!isAcceptedAudioFile(file)) {
-      setSelectedFile(null)
-      setTranscript('')
-      setFileError(`${getAudioFileFormatLabel(file)} is not supported yet.`)
-      setStatus(`Unsupported file type. Use ${getAcceptedAudioLabel()}.`)
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-
-      return
-    }
-
-    setSelectedFile(file)
-    setTranscript('')
-    setFileError('')
-    setStatus(
-      isSelectedModelReady
-        ? 'Audio loaded. Ready to transcribe locally.'
-        : 'Audio loaded. The selected model will load before transcription.',
+    const incomingFiles = Array.from(files)
+    const remainingSlots = Math.max(0, MAX_BATCH_FILES - jobsRef.current.length)
+    const candidateFiles = incomingFiles.slice(0, remainingSlots)
+    const acceptedFiles = candidateFiles.filter((file) => isAcceptedAudioFile(file))
+    const rejectedTypeFiles = candidateFiles.filter(
+      (file) => !isAcceptedAudioFile(file),
     )
-  }
+    const overflowCount = Math.max(0, incomingFiles.length - candidateFiles.length)
 
-  function clearSelectedFile() {
-    setSelectedFile(null)
-    setTranscript('')
-    setFileError('')
+    if (acceptedFiles.length > 0) {
+      const queuedJobs = acceptedFiles.map((file) => createTranscriptionJob(file))
+      setJobs((currentJobs) => [...currentJobs, ...queuedJobs])
+      setSelectedJobId((currentSelectedJobId) => currentSelectedJobId ?? queuedJobs[0].id)
+      setStatus(
+        isSelectedModelReady
+          ? 'Files queued. Ready to transcribe locally.'
+          : 'Files queued. The selected model will load before transcription.',
+      )
+    }
+
+    const errors: string[] = []
+    if (rejectedTypeFiles.length > 0) {
+      const rejectedFormats = rejectedTypeFiles
+        .map((file) => getAudioFileFormatLabel(file))
+        .join(', ')
+      errors.push(`${rejectedFormats} is not supported yet.`)
+      setStatus(`Unsupported file type. Use ${getAcceptedAudioLabel()}.`)
+    }
+    if (overflowCount > 0) {
+      errors.push(`Only ${MAX_BATCH_FILES} files can be queued at a time.`)
+    }
+    setFileError(errors.join(' '))
 
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
   }
 
+  function handleRemoveJob(jobId: string) {
+    if (isTranscribing) {
+      return
+    }
+
+    setJobs((currentJobs) => currentJobs.filter((job) => job.id !== jobId))
+    setSelectedJobId((currentSelectedJobId) => {
+      if (currentSelectedJobId !== jobId) {
+        return currentSelectedJobId
+      }
+      const remainingJobs = jobsRef.current.filter((job) => job.id !== jobId)
+      return remainingJobs[0]?.id ?? null
+    })
+  }
+
+  function handleClearJobs() {
+    if (isTranscribing) {
+      return
+    }
+    setJobs([])
+    setSelectedJobId(null)
+    setFileError('')
+    setHasCopiedTranscript(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  function handleSelectJob(jobId: string) {
+    setSelectedJobId(jobId)
+  }
+
   function handleModelChange(modelId: string) {
-    if (isModelDownloading) {
-      setStatus('Wait for the current model download to finish first.')
+    if (isModelWorking) {
+      setStatus('Wait for current work to finish first.')
       return
     }
 
@@ -252,8 +412,8 @@ export function useTranscriptionController() {
       return
     }
 
-    if (!selectedFile) {
-      setStatus('Choose an audio file to transcribe.')
+    if (jobs.length === 0) {
+      setStatus('Choose at least one file to transcribe.')
       fileInputRef.current?.click()
       return
     }
@@ -263,31 +423,18 @@ export function useTranscriptionController() {
       return
     }
 
-    try {
-      setTranscript('')
-      setFileError('')
-      setIsTranscribing(true)
-      setStatus('Preparing audio locally.')
-
-      const audio = await decodeAudioFile(selectedFile)
-      const request: TranscriptionWorkerRequest = {
-        id: createRequestId(),
-        type: 'transcribe',
-        modelId: selectedModelId,
-        audio,
-      }
-
-      setStatus('Sending audio to local transcription worker.')
-      workerRef.current?.postMessage(request, [audio.buffer])
-    } catch (error) {
-      setIsTranscribing(false)
-      setFileError('This browser could not read that file.')
-      setStatus(
-        error instanceof Error
-          ? error.message
-          : 'Unable to prepare audio for transcription.',
-      )
-    }
+    setJobs((currentJobs) =>
+      currentJobs.map((job) =>
+        job.status === 'error'
+          ? { ...job, status: 'queued', transcript: '', error: null }
+          : job,
+      ),
+    )
+    setFileError('')
+    setTranscriptionProgress(0)
+    isBatchRunningRef.current = true
+    setIsTranscribing(true)
+    await transcribeNextQueuedJob()
   }
 
   function handleCopyTranscript() {
@@ -309,31 +456,60 @@ export function useTranscriptionController() {
   }
 
   function handleDownloadTranscript() {
-    if (!hasTranscript) {
+    if (!hasTranscript || !selectedJob) {
       return
     }
 
-    const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob([selectedJob.transcript], {
+      type: 'text/plain;charset=utf-8',
+    })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
 
     anchor.href = url
-    anchor.download = `${selectedFile?.name.replace(/\.[^/.]+$/, '') || 'transcript'}.txt`
+    anchor.download = getTranscriptFileName(selectedJob.file.name)
     anchor.click()
     URL.revokeObjectURL(url)
   }
 
+  function handleDownloadAllTranscripts() {
+    if (completedJobs.length === 0) {
+      return
+    }
+
+    const zip = new JSZip()
+    const zipFileNames = createUniqueTranscriptFileNames(
+      completedJobs.map((job) => job.file.name),
+    )
+    completedJobs.forEach((job, index) => {
+      zip.file(zipFileNames[index], job.transcript)
+    })
+
+    void zip.generateAsync({ type: 'blob' }).then((blob) => {
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'transcripts.zip'
+      anchor.click()
+      URL.revokeObjectURL(url)
+    })
+  }
+
   return {
     cachedModelIds,
-    clearSelectedFile,
+    completedJobs,
     fileInputRef,
     fileError,
+    handleClearJobs,
     handleCopyTranscript,
     handleDeleteModel,
     handleDownloadModel,
     handleDownloadTranscript,
+    handleDownloadAllTranscripts,
     handleFiles,
     handleModelChange,
+    handleRemoveJob,
+    handleSelectJob,
     handleTranscribe,
     hasCopiedTranscript,
     hasTranscript,
@@ -341,12 +517,15 @@ export function useTranscriptionController() {
     isModelWorking,
     isSelectedModelCached,
     isTranscribing,
+    jobs,
     loadedModelId,
     modelDownloadProgress,
-    selectedFile,
+    selectedJob,
+    selectedJobId,
     selectedModel,
     selectedModelId,
     transcript,
+    transcriptionProgress,
   }
 }
 

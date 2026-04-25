@@ -60,6 +60,11 @@ export type TranscriptionWorkerResponse =
     }
   | {
       id: string
+      type: 'transcription-progress'
+      progress: number
+    }
+  | {
+      id: string
       type: 'transcription-complete'
       text: string
     }
